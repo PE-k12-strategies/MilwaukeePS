@@ -1,0 +1,50 @@
+sheet_tab,col_index_0based,col_letter,implied_header,app_property,loaded_from_sheet,used_in_dashboard,usage_summary
+1.1 Decision Flow,0,A,Site,schoolId,Yes,Yes,"Join key across sheets; map markers; Summary/Prioritize/export labels; formatted as MPS-NNN"
+1.1 Decision Flow,1,B,UniqueID,(unused),No — index defined only,No,Column index present in loader constants but never read into school properties
+1.1 Decision Flow,2,C,School Name,schoolName,Yes,Yes,"Map popup/search/compare; Summary tables; Prioritize ranks; CSV exports"
+1.1 Decision Flow,4,E,Grouped School Levels,gradeBand,Yes,Yes,"Map compare panel; Summary tables; ranked CSV export (formatted via formatGradeBand)"
+1.1 Decision Flow,5,F,Evaluate,(row filter),Yes,Yes,"Gate only: rows with Evaluate≠Yes are excluded from the dashboard dataset"
+1.1 Decision Flow,6,G,"Is Above Utilization Rate (utilization % value)",utilizationRate,Yes,Yes,"Strategy decision tree; group averages in Summary; map popup/compare; Prioritize weights; CSV exports"
+1.1 Decision Flow,9,J,"Enrollment growth 2019-2024 (*Average yearly change)",enrollmentGrowth5yrPct,Yes,Yes,Strategy decision tree (growth ≥ threshold branch)
+1.1 Decision Flow,9,J,"Enrollment growth 2019-2024 (*Average yearly change)",enrollmentGrowth5yr,Derived in app,Yes,Boolean legacy flag: enrollmentGrowth5yrPct ≥ 0 (prefer Pct property)
+1.1 Decision Flow,11,L,Will enrollment trend still be above,projectedUtilization10yr,Yes,Yes,"Strategy decision tree (over-utilized path); map compare panel"
+1.1 Decision Flow,13,N,"Distance other underutilized School (Number of schools within distance)",nearUnderutilizedSchool (partial input),Yes,Yes,"OR’d with cols R/T into nearUnderutilizedSchool; strategy tree merger path"
+1.1 Decision Flow,15,P,"Capacity of nearby schools to absorb / School Capacity Students",nearbyCapacityAvailable,Yes,Yes,"Strategy decision tree (group 2.4 vs 4); map compare panel"
+1.1 Decision Flow,17,R,Within distance of underutilized schools serving complimentary grades / School with Complimentary Grades,nearUnderutilizedSchool (partial input),Yes,Yes,OR’d into nearUnderutilizedSchool for strategy tree
+1.1 Decision Flow,19,T,Within distance of underutilized schools serving same grades / School with Same Grades,nearUnderutilizedSchool (partial input),Yes,Yes,OR’d into nearUnderutilizedSchool for strategy tree
+1.1 Decision Flow,21,V,Building Score Threshold Score,buildingScore,Yes,Yes,"Strategy tree; Summary averages/tables; map popup/compare; Prioritize Building Condition; CSV exports. Prefer over 1.2 composite"
+1.1 Decision Flow,23,X,Adequate Programmatic Offerings,programmaticOfferings,Yes,Yes,"Strategy tree program cutoffs; Summary tables; map popup/compare; CSV exports"
+1.1 Decision Flow,23,X,Adequate Programmatic Offerings,specialtyProgramCount,Yes (alias),Yes,"Copied from programmaticOfferings; Prioritize Program Access criterion"
+1.1 Decision Flow,26,AA,Site Capacity for Growth / Growth Capacity,siteExpansionCapacity,Yes,Yes,"Strategy tree (group 4 vs 2.4); map compare panel. Yes→true; N/No/N/A→false"
+1.2 Building Composite Score,0,A,Site,(join key),Yes,Yes,Joins FCI/EUI/AC/composite onto schools from 1.1 by Site
+1.2 Building Composite Score,9,J,FCI (raw; note points to source in 3.2/3.4),fci,Yes,Yes,Map compare panel only (not used in strategy tree or prioritization)
+1.2 Building Composite Score,11,L,EUI (Energy Use Intensity),energyUseIntensity,Yes,Yes,Map compare panel only
+1.2 Building Composite Score,13,N,AC percent coverage,acCoverage,Yes,Yes,"Map compare panel; Prioritize AC Status criterion (lower coverage = higher priority when weighted)"
+1.2 Building Composite Score,15,P,Composite building score,buildingScore (fallback),Yes,Yes,"Used only if 1.1 building score is missing/zero; then rounded like primary score"
+3.1 Connections,0,A,Site,(join key),Yes,Yes,Joins DPI code onto schools by Site
+3.1 Connections,11,L,DPI School Code,dpiSchoolCode,Yes,Yes,"Normalized (strip leading zeros); joins GeoJSON SCHOOL_ID for map coordinates. Lower campuses 362/176/140 inherit upper-campus DPI when blank"
+3.2 School Information,0,A,Site,(join key),Yes,Yes,Joins school-info extras onto schools by Site
+3.2 School Information,4,E,Location Identification Street Address,address,Yes,Yes,Map compare panel
+3.2 School Information,10,K,Board District,boardDistrict,Yes,Yes,"Formatted as District N; Strategy Group Charts (enrollment stacked by district × group)"
+3.2 School Information,25,Z,Distance to Overutilized School,overutilizedMpsWithin1Mile,Yes (transformed),Yes,"True only when distance === 0; Prioritize group 4; map compare"
+3.2 School Information,29,AD,There is a non-MPS public school within 1 mile,nonMpsSchoolsWithin1Mile,Yes,Yes,"Prioritize proximity criterion (several groups); map compare"
+3.2 School Information,35,AJ,Pre 1978,pre1978LeadRisk,Yes,Yes,"Prioritize Pre-1978 Lead Risk; map compare"
+3.2 School Information,55,BD,Accessible,adaAccessible,Yes,Yes,"Prioritize ADA Accessibility (not accessible prioritized); map compare. Yes→true; No/NA→false"
+3.2 School Information,56,BE,SY 23-24 Report Card Score,academicPerformance,Yes,Yes,"Prioritize Academic Performance; map compare"
+3.2 School Information,87,CJ,"Expand for Special Education Program Information Special Education",specialEdProgramCount,Yes,Yes,"Prioritize Special Ed Programs (group 4); map compare"
+3.3 School Enrollment,0,A,Site,(join key),Yes,Yes,Joins enrollment extras onto schools by Site
+3.3 School Enrollment,18,S,Current Enrollment 2024-2025,currentEnrollment,Yes,Yes,"Converts race %→counts; Board District chart stacks (sum enrollment by district×group)"
+3.3 School Enrollment,36,AK,Attendance Demographics Percent Students Attending from attendance Area,studentsInAttendanceArea,Yes,Yes,"Prioritize Students from Attendance Area %; map compare"
+3.3 School Enrollment,37,AL,Percent Economically disadvantaged Students,economicDisadvantageRate,Yes,Yes,"Prioritize Student Economic Status; map compare"
+3.3 School Enrollment,38,AM,Number Economically Disadvantaged Students,economicallyDisadvantagedCount,Yes,Yes,Strategy Group Charts (FRL / economically disadvantaged headcount by group)
+3.3 School Enrollment,40,AO,Number ELL Students,ellStudentCount,Yes,Yes,Strategy Group Charts (ELL headcount by group)
+3.3 School Enrollment,43,AR,Race/Ethinicity White,raceEthnicityCounts[White],Yes (share→count),Yes,Strategy Group Charts race stacks; map does not show race breakdown
+3.3 School Enrollment,44,AS,African-American,raceEthnicityCounts[African-American],Yes (share→count),Yes,Strategy Group Charts race stacks
+3.3 School Enrollment,45,AT,Hispanic,raceEthnicityCounts[Hispanic],Yes (share→count),Yes,Strategy Group Charts race stacks
+3.3 School Enrollment,46,AU,Asian,raceEthnicityCounts[Asian],Yes (share→count),Yes,Strategy Group Charts race stacks
+3.3 School Enrollment,47,AV,Native American,raceEthnicityCounts[Native American],Yes (share→count),Yes,Strategy Group Charts race stacks
+3.3 School Enrollment,48,AW,HI/PI,raceEthnicityCounts[Hawaiian or Pacific Isl.],Yes (share→count),Yes,Strategy Group Charts race stacks (label normalized)
+3.3 School Enrollment,49,AX,Multiple,raceEthnicityCounts[Multi-Racial],Yes (share→count),Yes,Strategy Group Charts race stacks (label normalized)
+3.3 School Enrollment,50,AY,Unknown,(dropped),Read then discarded,No,normalizeRaceEthnicityLabel drops Unknown; not stored or charted
+(n/a — not in sheets),,,(none),regionalSpecialtyProgramCount,No — defaults to 0,Yes,"Prioritize Regional Program Access (groups 2.1/2.3/3/program-focused); map compare. Never populated from sheets"
+(n/a — not in sheets),,,(none),receivesDisplacedStudents,No — defaults to false,Yes,"Prioritize +0.08 score boost when group toggle on; map compare. Never populated from sheets (mock data only)"

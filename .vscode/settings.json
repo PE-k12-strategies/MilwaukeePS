@@ -1,0 +1,12 @@
+{
+  "liveServer.settings.port": 5501,
+  "liveServer.settings.donotShowInfoMsg": true,
+  "liveServer.settings.donotVerifyTags": true,
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    ".git/**",
+    "node_modules/**",
+    "**/*.map"
+  ],
+  "task.allowAutomaticTasks": "on"
+}
