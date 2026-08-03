@@ -533,10 +533,12 @@ export function Step4Prioritize({
                     weightsByGroup,
                   )
                   if (groupMeta.isParent) {
-                    const leafPair =
-                      groupId === 'all-building-focused' ? '2.2' : '2.3'
+                    const included =
+                      groupId === 'all-building-focused'
+                        ? groupMeta.sourceGroupIds.join(', ')
+                        : '2.1 and 2.3'
                     setAllGroupsExportNotice(
-                      `This “All groups” export ranks schools in the 2.1 and ${leafPair} groups as they are weighted within those individual strategy groups, not as they are weighted in this current combined view.`,
+                      `This “All groups” export ranks schools within each individual strategy group’s own weights, not as they are weighted in this current combined view (which includes ${included}).`,
                     )
                   } else {
                     setAllGroupsExportNotice(null)

@@ -255,7 +255,8 @@ export const GROUP_WEIGHT_CONFIGS: Record<string, GroupWeightConfig> = {
   },
   'all-building-focused': {
     groupId: 'all-building-focused',
-    title: 'Prioritization Weights for All Building-Focused (2.1 + 2.2)',
+    title:
+      'Prioritization Weights for All Building-Focused (excl. 1 Closure/Merger & 2.3 Programmatic Investment)',
     criteria: [
       utilizationHigher,
       economicHigher,

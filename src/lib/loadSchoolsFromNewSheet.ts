@@ -35,6 +35,12 @@ import {
   resolveNewSheetColumns,
 } from './resolveNewSheetColumns'
 import {
+  SPECIALTY_PROGRAM_COLUMNS,
+  SPECIAL_ED_PROGRAM_COLUMNS,
+  isProgramOffered,
+  type ProgramColumnSpec,
+} from '../config/programOfferings'
+import {
   computeProximityFlags,
   parseDistanceMatrix,
   type DistanceRuntime,
@@ -215,12 +221,44 @@ export async function loadNewWorkbookSchools(
   const enrollBySite = indexBySite(enrollmentTable, nameColForTab('enrollment'))
   const programBySite = indexBySite(programTable, nameColForTab('program'))
   const buildingBySite = indexBySite(buildingTable, nameColForTab('building'))
-  const enrollmentSumsByUniqueId = indexByUniqueId(enrollmentSumsTable, 0)
+  const enrollmentSumsByUniqueId = indexByUniqueId(
+    enrollmentSumsTable,
+    (() => {
+      const pivotUid = resolveUniqueIdColumn(headersByTab.enrollmentSums)
+      return pivotUid >= 0 ? pivotUid : 1
+    })(),
+  )
   const currentEnrollmentCol =
     resolvedCols.get(NEW_SHEET_FIELDS.currentEnrollment.key)?.index ?? -1
   const enrollmentFiveYearsAgoCol =
     resolvedCols.get(NEW_SHEET_FIELDS.enrollmentFiveYearsAgo.key)?.index ?? -1
   const uniqueIdCol = resolveUniqueIdColumn(headersByTab.siteInfo)
+  const programHeaders = headersByTab.program
+  const resolveProgramCols = (specs: ProgramColumnSpec[]) =>
+    specs
+      .map((spec) => {
+        const { index } = findColumnIndex(programHeaders, spec.label)
+        return index >= 0 ? { index, displayName: spec.displayName } : null
+      })
+      .filter((x): x is { index: number; displayName: string } => Boolean(x))
+  const specialtyProgramCols = resolveProgramCols(SPECIALTY_PROGRAM_COLUMNS)
+  const specialEdProgramCols = resolveProgramCols(SPECIAL_ED_PROGRAM_COLUMNS)
+
+  const collectOfferedPrograms = (
+    site: string,
+    cols: { index: number; displayName: string }[],
+  ): string[] => {
+    const row = programBySite.get(site)
+    if (!row) return []
+    const names: string[] = []
+    for (const col of cols) {
+      const cell = readCellAt(row, col.index)
+      if (cell.missing) continue
+      if (isProgramOffered(cell.v, cell.f)) names.push(col.displayName)
+    }
+    return names
+  }
+
   const oldBySite = new Map(
     oldCollection.features.map((f) => [
       siteKeyFromSchoolId(f.properties.schoolId),
@@ -482,6 +520,15 @@ export async function loadNewWorkbookSchools(
       ? parseNumber(progCell.v)
       : (old?.programmaticOfferings ?? 0)
 
+    const specialtyProgramNames = collectOfferedPrograms(
+      site,
+      specialtyProgramCols,
+    )
+    const specialEdProgramNames = collectOfferedPrograms(
+      site,
+      specialEdProgramCols,
+    )
+
     const props: SchoolProperties = {
       schoolId,
       schoolName,
@@ -495,6 +542,10 @@ export async function loadNewWorkbookSchools(
       buildingScore,
       programmaticOfferings,
       specialtyProgramCount: programmaticOfferings,
+      specialtyProgramNames:
+        specialtyProgramNames.length > 0
+          ? specialtyProgramNames
+          : (old?.specialtyProgramNames ?? []),
       nearbyCapacityAvailable: old?.nearbyCapacityAvailable ?? false,
       siteExpansionCapacity,
       nearUnderutilizedSchool: old?.nearUnderutilizedSchool ?? false,
@@ -516,6 +567,10 @@ export async function loadNewWorkbookSchools(
       belowRegionalSpecialtyMedian: false,
       nonMpsSchoolsWithin1Mile,
       specialEdProgramCount,
+      specialEdProgramNames:
+        specialEdProgramNames.length > 0
+          ? specialEdProgramNames
+          : (old?.specialEdProgramNames ?? []),
       overutilizedMpsWithin1Mile: old?.overutilizedMpsWithin1Mile ?? false,
       receivesDisplacedStudents: old?.receivesDisplacedStudents,
     }

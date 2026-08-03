@@ -239,9 +239,11 @@ function emptyPrioritizationDefaults(): Pick<
   | 'academicPerformance'
   | 'pre1978LeadRisk'
   | 'adaAccessible'
+  | 'specialtyProgramNames'
   | 'belowRegionalSpecialtyMedian'
   | 'nonMpsSchoolsWithin1Mile'
   | 'specialEdProgramCount'
+  | 'specialEdProgramNames'
   | 'overutilizedMpsWithin1Mile'
   | 'receivesDisplacedStudents'
 > {
@@ -256,9 +258,11 @@ function emptyPrioritizationDefaults(): Pick<
     academicPerformance: 0,
     pre1978LeadRisk: false,
     adaAccessible: false,
+    specialtyProgramNames: [],
     belowRegionalSpecialtyMedian: false,
     nonMpsSchoolsWithin1Mile: false,
     specialEdProgramCount: 0,
+    specialEdProgramNames: [],
     overutilizedMpsWithin1Mile: false,
     receivesDisplacedStudents: false,
   }

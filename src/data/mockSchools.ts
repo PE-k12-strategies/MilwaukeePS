@@ -1,14 +1,24 @@
 import type { SchoolCollection, SchoolFeature, SchoolProperties } from '../types/school'
 
 function school(
-  props: SchoolProperties,
+  props: Omit<
+    SchoolProperties,
+    'specialtyProgramNames' | 'specialEdProgramNames'
+  > &
+    Partial<
+      Pick<SchoolProperties, 'specialtyProgramNames' | 'specialEdProgramNames'>
+    >,
   lng: number,
   lat: number,
 ): SchoolFeature {
   return {
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [lng, lat] },
-    properties: props,
+    properties: {
+      specialtyProgramNames: [],
+      specialEdProgramNames: [],
+      ...props,
+    },
   }
 }
 

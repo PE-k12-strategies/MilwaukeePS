@@ -169,32 +169,6 @@ export default function App() {
     void loadFromSheet()
   }
 
-  const handleUpload = async (file: File) => {
-    if (!collection) {
-      setError('Load sheet data before uploading GeoJSON locations.')
-      setShowDataSources(true)
-      return
-    }
-    try {
-      const text = await file.text()
-      const json = JSON.parse(text) as unknown
-      const result = await loadSchoolsFromSheets('new', thresholds)
-      const merged = mergeGeoJsonLocations(result.collection, json)
-      setCollection(merged)
-      setFallbackFields(result.fallbackFields)
-      setDistanceRuntime(result.distanceRuntime)
-      setDataLabel(locationLabel(`locations from ${file.name}`))
-      setError(null)
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not merge GeoJSON locations onto sheet schools.',
-      )
-      setShowDataSources(true)
-    }
-  }
-
   const goToPrioritize = (groupId: string) => {
     setPrioritizeGroupId(groupId as PrioritizationGroupId)
     setTab('prioritize')
@@ -246,7 +220,6 @@ export default function App() {
               loading={loading}
               fallbackFields={fallbackFields}
               onReloadDefault={handleReload}
-              onUpload={handleUpload}
               error={error}
             />
           </div>

@@ -70,6 +70,8 @@ export interface SchoolProperties {
   energyUseIntensity?: number
   /** Count of specialty programs at the school */
   specialtyProgramCount: number
+  /** Full names of specialty pathways offered (from Program Data flag columns). */
+  specialtyProgramNames: string[]
   /**
    * True when specialtyProgramCount is strictly below the median
    * specialtyProgramCount among evaluable schools in the same Board District.
@@ -79,6 +81,8 @@ export interface SchoolProperties {
   nonMpsSchoolsWithin1Mile: boolean
   /** Self-contained special education programs */
   specialEdProgramCount: number
+  /** Full names of special education programs offered (acronym columns expanded). */
+  specialEdProgramNames: string[]
   /**
    * True when sheet 3.2 “Distance to Overutilized School” is 0
    * (at/adjacent to an overutilized school).

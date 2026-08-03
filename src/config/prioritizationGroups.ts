@@ -31,10 +31,13 @@ const leafGroups: PrioritizationGroupMeta[] = STRATEGY_GROUPS.map((group) => ({
 export const PARENT_PRIORITIZATION_GROUPS: PrioritizationGroupMeta[] = [
   {
     id: BUILDING_FOCUSED_GROUP_ID,
-    label: 'All Building-Focused (2.1 + 2.2)',
+    label: 'All Building-Focused (excl. 1 & 2.3)',
     shortLabel: 'All Building-Focused',
     color: '#d9468f',
-    sourceGroupIds: ['2.1', '2.2'],
+    // Every leaf except Closure/Merger (1) and Programmatic Investment (2.3).
+    sourceGroupIds: STRATEGY_GROUPS.map((g) => g.id).filter(
+      (id) => id !== '1' && id !== '2.3',
+    ),
     weightConfigId: BUILDING_FOCUSED_GROUP_ID,
     isParent: true,
   },

@@ -35,7 +35,7 @@ export function WelcomeModal({ open, onClose }: WelcomeModalProps) {
         <p className="mt-4 text-sm leading-relaxed text-mps-text sm:text-base">
           This tool helps analyze and prioritize school facilities based on multiple
           criteria. Use <strong>View and Update Data Sources</strong> to reload the
-          Google Sheet or upload GeoJSON locations. Start with{' '}
+          Google Sheet. Start with{' '}
           <strong>Understand School-Level Data</strong>, then sort into strategy
           groups, compare schools on the map, and prioritize within groups.
         </p>

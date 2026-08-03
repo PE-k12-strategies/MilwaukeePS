@@ -132,8 +132,24 @@ export type ResolvedColumnMap = Map<
 >
 
 /**
+ * Convert an Excel column letter (A, B, …, Z, AA, …) to a 0-based index.
+ */
+export function excelColToIndex(col: string): number {
+  const s = String(col ?? '')
+    .trim()
+    .toUpperCase()
+  if (!/^[A-Z]+$/.test(s)) return -1
+  let n = 0
+  for (const ch of s) {
+    n = n * 26 + (ch.charCodeAt(0) - 64)
+  }
+  return n - 1
+}
+
+/**
  * Resolve all mapped fields to live column indexes by header name.
- * Does not use fixed Excel letters — missing headers stay unresolved (index -1).
+ * Does not use fixed Excel letters — missing headers stay unresolved (index -1),
+ * except enrollment-sums pivot fields which use col C and C+5.
  */
 export function resolveNewSheetColumns(
   tables: Record<NewSheetTabKey, GvizTable>,
@@ -153,15 +169,42 @@ export function resolveNewSheetColumns(
 
   const byKey: ResolvedColumnMap = new Map()
   const issues: FallbackFieldInfo[] = []
+  const relativeSpecs: NewSheetFieldSpec[] = []
 
   for (const spec of fields) {
     const headers = headersByTab[spec.tab]
+    const tabTitle = newSheetTabName(spec.tab)
+
+    if (spec.pivotRelativeTo) {
+      relativeSpecs.push(spec)
+      continue
+    }
+
+    if (spec.pivotPosition === 'excel-col') {
+      const idx = excelColToIndex(spec.col ?? '')
+      if (idx < 0) {
+        issues.push({
+          key: `header:${spec.key}`,
+          label: spec.label,
+          reason: 'header-mismatch',
+          detail: `Invalid Excel column “${spec.col ?? ''}” for “${tabTitle}”`,
+        })
+        byKey.set(spec.key, { tab: spec.tab, index: -1, label: spec.label })
+      } else {
+        byKey.set(spec.key, {
+          tab: spec.tab,
+          index: idx,
+          label: spec.label,
+        })
+      }
+      continue
+    }
+
     const { index, matchCount } = findColumnIndex(
       headers,
       spec.label,
       spec.aliases ?? [],
     )
-    const tabTitle = newSheetTabName(spec.tab)
 
     if (index < 0) {
       issues.push({
@@ -184,6 +227,25 @@ export function resolveNewSheetColumns(
     }
 
     byKey.set(spec.key, { tab: spec.tab, index, label: spec.label })
+  }
+
+  for (const spec of relativeSpecs) {
+    const tabTitle = newSheetTabName(spec.tab)
+    const base = byKey.get(spec.pivotRelativeTo ?? '')
+    const offset = spec.pivotOffset ?? 0
+    const idx =
+      base && base.index >= 0 ? base.index + offset : -1
+    if (idx < 0) {
+      issues.push({
+        key: `header:${spec.key}`,
+        label: spec.label,
+        reason: 'header-mismatch',
+        detail: `Could not resolve relative column on “${tabTitle}” (base “${spec.pivotRelativeTo}” + ${offset})`,
+      })
+      byKey.set(spec.key, { tab: spec.tab, index: -1, label: spec.label })
+    } else {
+      byKey.set(spec.key, { tab: spec.tab, index: idx, label: spec.label })
+    }
   }
 
   return { byKey, issues, headersByTab }

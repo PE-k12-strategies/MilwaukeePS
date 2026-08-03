@@ -17,14 +17,27 @@ export interface NewSheetFieldSpec {
    */
   label: string
   /**
-   * Prior header names that should still resolve to this field after renames.
+   * Optional aliases for prior header names. Ignored when `pivotPosition` /
+   * `pivotRelativeTo` is set.
    */
   aliases?: string[]
   tab: NewSheetTabKey
   /**
-   * Optional last-known Excel column letter (documentation only; not used for reads).
+   * Optional Excel column letter. Used for reads when
+   * `pivotPosition: 'excel-col'`; otherwise documentation only.
    */
   col?: string
+  /**
+   * Enrollment sums pivot: resolve by fixed Excel column (see `col`).
+   */
+  pivotPosition?: 'excel-col'
+  /**
+   * Enrollment sums pivot: resolve as another pivot field’s column + offset
+   * (e.g. currentEnrollment + 5 → enrollment 5 years ago).
+   */
+  pivotRelativeTo?: string
+  /** Column offset applied when `pivotRelativeTo` is set (can be negative). */
+  pivotOffset?: number
 }
 
 /**
@@ -111,17 +124,14 @@ export const NEW_SHEET_FIELDS: Record<string, NewSheetFieldSpec> = {
    * Source for computing enrollmentGrowth5yrPct (not stored as its own school
    * property). Average yearly % change =
    * ((current − 5yrAgo) / 5yrAgo / 5) × 100 from the enrollment sums pivot.
+   * Column = five to the right of current enrollment (pivot col C → H).
    */
   enrollmentFiveYearsAgo: {
     key: 'enrollmentFiveYearsAgo',
-    label: 'SUM of Enrollment 5 Years Ago',
-    aliases: [
-      'Sum of Enrollment 5 Years Ago',
-      'Enrollment 5 Years Ago',
-      'SUM of Enrollment 5 Years Ago',
-    ],
+    label: 'Enrollment 5 Years Ago (pivot C+5)',
     tab: 'enrollmentSums',
-    col: 'G',
+    pivotRelativeTo: 'currentEnrollment',
+    pivotOffset: 5,
   },
   siteExpansionCapacity: {
     key: 'siteExpansionCapacity',
@@ -129,18 +139,15 @@ export const NEW_SHEET_FIELDS: Record<string, NewSheetFieldSpec> = {
     tab: 'enrollment',
     col: 'Q',
   },
+  /**
+   * Current enrollment from enrollment sums pivot — fixed at column C.
+   */
   currentEnrollment: {
     key: 'currentEnrollment',
-    label: 'SUM of Current Enrollment',
-    aliases: [
-      'Sum of current enrollments',
-      'Sum of Current Enrollment',
-      'Current Enrollment',
-      'Current Enrollment 2024-2025',
-      'Enrollment 2024-2025',
-    ],
+    label: 'Current Enrollment (pivot col C)',
     tab: 'enrollmentSums',
-    col: 'L',
+    col: 'C',
+    pivotPosition: 'excel-col',
   },
   buildingCapacity: {
     key: 'buildingCapacity',

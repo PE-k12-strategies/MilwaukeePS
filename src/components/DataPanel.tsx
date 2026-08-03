@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { ExternalLink, RotateCcw, Sheet, Upload, X } from 'lucide-react'
+import { useState } from 'react'
+import { ExternalLink, RotateCcw, Sheet, X } from 'lucide-react'
 import {
   SHEET_SOURCE_META,
   type FallbackFieldInfo,
@@ -11,11 +11,8 @@ interface DataPanelProps {
   loading?: boolean
   fallbackFields: FallbackFieldInfo[]
   onReloadDefault: () => void
-  onUpload: (file: File) => void
   error: string | null
 }
-
-type DataMode = 'default' | 'upload'
 
 const PRIMARY_META = SHEET_SOURCE_META.new
 const LEGACY_META = SHEET_SOURCE_META.old
@@ -26,12 +23,9 @@ export function DataPanel({
   loading = false,
   fallbackFields,
   onReloadDefault,
-  onUpload,
   error,
 }: DataPanelProps) {
-  const [mode, setMode] = useState<DataMode>('default')
   const [sheetEditorOpen, setSheetEditorOpen] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
   const headerIssues = fallbackFields.filter((f) => f.reason === 'header-mismatch')
   const otherIssues = fallbackFields.filter((f) => f.reason !== 'header-mismatch')
   const embedSrc = PRIMARY_META.embedUrl ?? PRIMARY_META.workbookUrl
@@ -42,89 +36,31 @@ export function DataPanel({
         <section className="card p-5">
           <h2 className="mb-3 text-base font-bold text-mps-blue">Data Input</h2>
 
-          <div className="mb-3 grid grid-cols-2 overflow-hidden rounded-md border border-mps-gray-border">
+          <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => setMode('default')}
-              className={`px-2 py-2 text-center text-xs font-semibold transition ${
-                mode === 'default'
-                  ? 'bg-mps-blue text-white'
-                  : 'bg-white text-mps-muted hover:bg-mps-gray'
-              }`}
+              disabled={loading}
+              onClick={onReloadDefault}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-mps-blue px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-mps-blue-dark disabled:opacity-60"
             >
-              Google Sheet
+              <RotateCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Loading Sheet…' : 'Refresh Data from Google Sheet'}
             </button>
             <button
               type="button"
-              onClick={() => {
-                setMode('upload')
-                fileRef.current?.click()
-              }}
-              className={`px-2 py-2 text-center text-xs font-semibold transition ${
-                mode === 'upload'
-                  ? 'bg-mps-blue text-white'
-                  : 'bg-white text-mps-muted hover:bg-mps-gray'
-              }`}
+              onClick={() => setSheetEditorOpen(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-mps-blue bg-white px-3 py-2.5 text-sm font-semibold text-mps-blue transition hover:bg-mps-blue-soft"
             >
-              Upload GeoJSON
+              <Sheet className="h-4 w-4" />
+              Edit Google Sheet
             </button>
           </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".json,.geojson,application/geo+json,application/json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) {
-                setMode('upload')
-                onUpload(file)
-              }
-              e.target.value = ''
-            }}
-          />
-
-          {mode === 'default' ? (
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => {
-                  setMode('default')
-                  onReloadDefault()
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-mps-blue px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-mps-blue-dark disabled:opacity-60"
-              >
-                <RotateCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Loading Sheet…' : 'Refresh Data from Google Sheet'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSheetEditorOpen(true)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-mps-blue bg-white px-3 py-2.5 text-sm font-semibold text-mps-blue transition hover:bg-mps-blue-soft"
-              >
-                <Sheet className="h-4 w-4" />
-                Edit Google Sheet
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-mps-blue bg-white px-3 py-2.5 text-sm font-semibold text-mps-blue transition hover:bg-mps-blue-soft"
-            >
-              <Upload className="h-4 w-4" />
-              Choose GeoJSON File
-            </button>
-          )}
-
           <p className="mt-2 text-[11px] leading-relaxed text-mps-muted">
             Attribute data is read live from the Google Sheet by matching column
-            header names (column order can change). GeoJSON should supply school
-            locations only (matched by DPI / schoolId); it does not replace sheet
-            attributes. Missing mapped fields may fall back to the legacy LRFMP
-            workbook.
+            header names (column order can change). School map locations come from
+            the built-in MPSSchools GeoJSON (matched by DPI / schoolId). Missing
+            mapped fields may fall back to the legacy LRFMP workbook.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-mps-muted">
             Source workbook:{' '}

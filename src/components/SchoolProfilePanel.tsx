@@ -1,4 +1,5 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react'
+import { MetricHelpTip } from './MetricHelpTip'
 import { utilizationBandFor } from '../config/utilizationBands'
 import {
   availableSeats,
@@ -52,21 +53,29 @@ function MetricCard({
   label,
   color,
   barPct,
+  helpKey,
 }: {
   value: string
   label: string
   color: string
-  barPct: number
+  barPct?: number
+  helpKey?: string
 }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
       <p className="text-2xl font-bold tabular-nums" style={{ color }}>
         {value}
       </p>
-      <p className="mt-0.5 text-xs font-semibold" style={{ color }}>
+      <p
+        className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold"
+        style={{ color }}
+      >
         {label}
+        <MetricHelpTip helpKey={helpKey} />
       </p>
-      <ProgressBar pct={barPct} color="#111827" />
+      {barPct !== undefined ? (
+        <ProgressBar pct={barPct} color="#111827" />
+      ) : null}
     </div>
   )
 }
@@ -85,11 +94,35 @@ function YesNoTag({ yes }: { yes: boolean }) {
   )
 }
 
+function ChartHoverTip({
+  tip,
+}: {
+  tip: { x: number; y: number; title: string; detail: string } | null
+}) {
+  if (!tip) return null
+  return (
+    <div
+      className="pointer-events-none absolute z-20 max-w-[14rem] -translate-x-1/2 -translate-y-[calc(100%+10px)] rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left shadow-lg"
+      style={{ left: tip.x, top: tip.y }}
+      role="tooltip"
+    >
+      <p className="text-xs font-semibold text-slate-900">{tip.title}</p>
+      <p className="text-[11px] text-slate-600">{tip.detail}</p>
+    </div>
+  )
+}
+
 function RadarChart({
   axes,
 }: {
   axes: { label: string; percentile: number }[]
 }) {
+  const [tip, setTip] = useState<{
+    x: number
+    y: number
+    title: string
+    detail: string
+  } | null>(null)
   const pad = 48
   const size = 260
   const cx = size / 2
@@ -120,74 +153,125 @@ function RadarChart({
     dataPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ') +
     'Z'
 
+  const showTip = (
+    e: MouseEvent<SVGElement>,
+    title: string,
+    detail: string,
+  ) => {
+    const host = e.currentTarget.ownerSVGElement?.parentElement
+    if (!host) return
+    const rect = host.getBoundingClientRect()
+    setTip({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      title,
+      detail,
+    })
+  }
+
   return (
-    <svg
-      viewBox={`${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`}
-      className="mx-auto h-auto w-full max-w-[320px]"
-    >
-      {gridLevels.map((t) => {
-        const pts = Array.from({ length: n }, (_, i) => point(i, t))
-        const d =
-          pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ') +
-          'Z'
-        return (
-          <path
-            key={t}
-            d={d}
-            fill="none"
-            stroke="#e2e8f0"
-            strokeWidth={1}
-          />
-        )
-      })}
-      {axes.map((_, i) => {
-        const [x, y] = point(i, 1)
-        return (
-          <line
-            key={i}
-            x1={cx}
-            y1={cy}
-            x2={x}
-            y2={y}
-            stroke="#e2e8f0"
-            strokeWidth={1}
-          />
-        )
-      })}
-      <path
-        d={dataPath}
-        fill="rgba(37, 99, 235, 0.25)"
-        stroke="#2563eb"
-        strokeWidth={2}
-      />
-      {axes.map((ax, i) => {
-        const [x, y] = point(i, 1.28)
-        const lines = labelLines(ax.label)
-        const lineH = 11
-        const startY = y - ((lines.length - 1) * lineH) / 2
-        return (
-          <text
-            key={ax.label}
-            x={x}
-            y={startY}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            className="fill-slate-600"
-            style={{ fontSize: 10, fontWeight: 600 }}
-          >
-            {lines.map((line, li) => (
-              <tspan key={line} x={x} dy={li === 0 ? 0 : lineH}>
-                {line}
-              </tspan>
-            ))}
-          </text>
-        )
-      })}
-    </svg>
+    <div className="relative mx-auto w-full max-w-[320px]">
+      <svg
+        viewBox={`${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`}
+        className="h-auto w-full"
+      >
+        {gridLevels.map((t) => {
+          const pts = Array.from({ length: n }, (_, i) => point(i, t))
+          const d =
+            pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ') +
+            'Z'
+          return (
+            <path
+              key={t}
+              d={d}
+              fill="none"
+              stroke="#e2e8f0"
+              strokeWidth={1}
+            />
+          )
+        })}
+        {axes.map((_, i) => {
+          const [x, y] = point(i, 1)
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={x}
+              y2={y}
+              stroke="#e2e8f0"
+              strokeWidth={1}
+            />
+          )
+        })}
+        <path
+          d={dataPath}
+          fill="rgba(37, 99, 235, 0.25)"
+          stroke="#2563eb"
+          strokeWidth={2}
+        />
+        {axes.map((ax, i) => {
+          const [dx, dy] = dataPts[i]
+          const [x, y] = point(i, 1.28)
+          const lines = labelLines(ax.label)
+          const lineH = 11
+          const startY = y - ((lines.length - 1) * lineH) / 2
+          const detail = `${ax.percentile.toFixed(0)}th percentile`
+          return (
+            <g key={ax.label}>
+              <circle
+                cx={dx}
+                cy={dy}
+                r={5}
+                fill="#2563eb"
+                stroke="#fff"
+                strokeWidth={1.5}
+                className="cursor-pointer"
+                onMouseEnter={(e) => showTip(e, ax.label, detail)}
+                onMouseMove={(e) => showTip(e, ax.label, detail)}
+                onMouseLeave={() => setTip(null)}
+              />
+              {/* Larger invisible hit target */}
+              <circle
+                cx={dx}
+                cy={dy}
+                r={14}
+                fill="transparent"
+                className="cursor-pointer"
+                onMouseEnter={(e) => showTip(e, ax.label, detail)}
+                onMouseMove={(e) => showTip(e, ax.label, detail)}
+                onMouseLeave={() => setTip(null)}
+              />
+              <text
+                x={x}
+                y={startY}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-slate-600"
+                style={{ fontSize: 10, fontWeight: 600 }}
+              >
+                {lines.map((line, li) => (
+                  <tspan key={line} x={x} dy={li === 0 ? 0 : lineH}>
+                    {line}
+                  </tspan>
+                ))}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <ChartHoverTip tip={tip} />
+    </div>
   )
 }
 
 function PieChart({ slices }: { slices: DemoSlice[] }) {
+  const [tip, setTip] = useState<{
+    x: number
+    y: number
+    title: string
+    detail: string
+  } | null>(null)
   const size = 220
   const cx = size / 2
   const cy = size / 2
@@ -218,13 +302,45 @@ function PieChart({ slices }: { slices: DemoSlice[] }) {
     return { ...s, d, lx, ly, mid }
   })
 
+  const showTip = (
+    e: MouseEvent<SVGElement>,
+    title: string,
+    detail: string,
+  ) => {
+    const host = e.currentTarget.ownerSVGElement?.parentElement
+    if (!host) return
+    const rect = host.getBoundingClientRect()
+    setTip({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      title,
+      detail,
+    })
+  }
+
   return (
     <div className="flex flex-col items-center gap-3">
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-auto w-full max-w-[240px]">
-        {arcs.map((a) => (
-          <path key={a.label} d={a.d} fill={a.color} stroke="#fff" strokeWidth={1.5} />
-        ))}
-      </svg>
+      <div className="relative w-full max-w-[240px]">
+        <svg viewBox={`0 0 ${size} ${size}`} className="h-auto w-full">
+          {arcs.map((a) => {
+            const detail = `${a.pct.toFixed(1)}% · ${Math.round(a.count).toLocaleString('en-US')} students`
+            return (
+              <path
+                key={a.label}
+                d={a.d}
+                fill={a.color}
+                stroke="#fff"
+                strokeWidth={1.5}
+                className="cursor-pointer transition-opacity hover:opacity-90"
+                onMouseEnter={(e) => showTip(e, a.label, detail)}
+                onMouseMove={(e) => showTip(e, a.label, detail)}
+                onMouseLeave={() => setTip(null)}
+              />
+            )
+          })}
+        </svg>
+        <ChartHoverTip tip={tip} />
+      </div>
       <ul className="flex w-full flex-wrap justify-center gap-x-3 gap-y-1 text-[11px]">
         {slices.map((s) => (
           <li key={s.label} className="inline-flex items-center gap-1.5 text-slate-700">
@@ -252,6 +368,7 @@ function ComparisonCard({
   comparison,
   footerNote,
   capacityBlock,
+  helpKey,
 }: {
   title: string
   accent: 'blue' | 'green'
@@ -268,6 +385,7 @@ function ComparisonCard({
     utilization: string
     bandLabel: string
   }
+  helpKey?: string
 }) {
   const isBlue = accent === 'blue'
   const topBg = isBlue ? 'bg-sky-50 border-l-sky-600' : 'bg-emerald-50 border-l-emerald-600'
@@ -280,7 +398,10 @@ function ComparisonCard({
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h4 className="text-sm font-bold text-slate-900">{title}</h4>
+      <h4 className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
+        {title}
+        <MetricHelpTip helpKey={helpKey} />
+      </h4>
       <p className="text-xs text-slate-500">How this school compares to all others</p>
 
       <div
@@ -360,24 +481,48 @@ function ComparisonCard({
 
 function InfoCard({
   label,
+  helpKey,
+  caption,
   children,
 }: {
   label: string
+  helpKey?: string
+  /** Optional subtitle under the label/value row (e.g. program names). */
+  caption?: string
   children: ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md bg-sky-50 px-3 py-2.5">
-      <span className="text-xs font-medium text-sky-800">{label}</span>
-      <div className="shrink-0 text-sm font-bold text-sky-950">{children}</div>
+    <div className="rounded-md bg-sky-50 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-800">
+          {label}
+          <MetricHelpTip helpKey={helpKey} />
+        </span>
+        <div className="shrink-0 text-sm font-bold text-sky-950">{children}</div>
+      </div>
+      {caption ? (
+        <p className="mt-1 text-[11px] leading-snug font-normal text-sky-900/75">
+          {caption}
+        </p>
+      ) : null}
     </div>
   )
 }
 
-function SectionTitle({ children }: { children: ReactNode }) {
+function SectionTitle({
+  children,
+  helpKey,
+}: {
+  children: ReactNode
+  helpKey?: string
+}) {
   return (
     <h4 className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-900">
       <span className="inline-block h-2 w-2 rounded-full bg-sky-600" />
-      {children}
+      <span className="inline-flex items-center gap-1">
+        {children}
+        <MetricHelpTip helpKey={helpKey} />
+      </span>
     </h4>
   )
 }
@@ -385,10 +530,6 @@ function SectionTitle({ children }: { children: ReactNode }) {
 export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps) {
   const band = utilizationBandFor(school.utilizationRate)
   const seats = availableSeats(school)
-  const maxPrograms = useMemo(
-    () => Math.max(1, ...schools.map((s) => s.programmaticOfferings || 0)),
-    [schools],
-  )
 
   const utilCmp = useMemo(
     () =>
@@ -424,24 +565,27 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
         <MetricCard
           value={formatPct(school.utilizationRate)}
           label="Utilization Rate"
+          helpKey="utilizationRate"
           color={band.color}
           barPct={Math.min(school.utilizationRate, 100)}
         />
         <MetricCard
           value={`${formatNum(school.buildingScore, 1)}/10`}
           label="Building Score"
+          helpKey="buildingScore"
           color="#16a34a"
           barPct={(school.buildingScore / 10) * 100}
         />
         <MetricCard
           value={formatNum(school.programmaticOfferings, 1)}
           label="Programmatic Offerings"
+          helpKey="programmaticOfferings"
           color="#7c3aed"
-          barPct={(school.programmaticOfferings / maxPrograms) * 100}
         />
         <MetricCard
           value={formatPct(school.economicDisadvantageRate)}
           label="Free/Reduced Lunch"
+          helpKey="freeReducedLunch"
           color="#dc2626"
           barPct={school.economicDisadvantageRate}
         />
@@ -450,8 +594,9 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
       {/* Radar + demographics */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="text-sm font-bold text-slate-900">
+          <h4 className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
             School Profile (Normalized)
+            <MetricHelpTip helpKey="schoolProfileNormalized" />
           </h4>
           <p className="mb-2 text-xs text-slate-500">
             Scores on a 0–100 percentile scale relative to all schools.
@@ -459,7 +604,10 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
           <RadarChart axes={radar} />
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h4 className="text-sm font-bold text-slate-900">Student Demographics</h4>
+          <h4 className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-900">
+            Student Demographics
+            <MetricHelpTip helpKey="studentDemographics" />
+          </h4>
           <p className="mb-2 text-xs text-slate-500">
             Race / ethnicity share of enrolled students.
           </p>
@@ -471,6 +619,7 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
       <div className="grid gap-3 lg:grid-cols-2">
         <ComparisonCard
           title="Utilization Rate Comparison"
+          helpKey="utilizationComparison"
           accent="blue"
           schoolName={school.schoolName}
           primaryValue={formatPct(school.utilizationRate)}
@@ -482,6 +631,7 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
         />
         <ComparisonCard
           title="Enrollment Comparison"
+          helpKey="enrollmentComparison"
           accent="green"
           schoolName={school.schoolName}
           primaryValue={formatNum(school.currentEnrollment)}
@@ -509,29 +659,35 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
         </h4>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <SectionTitle>Facility Details</SectionTitle>
+            <SectionTitle helpKey="facilityDetails">Facility Details</SectionTitle>
             <div className="space-y-2">
-              <InfoCard label="Pre-1978 Building">
+              <InfoCard label="Pre-1978 Building" helpKey="pre1978LeadRisk">
                 <YesNoTag yes={school.pre1978LeadRisk} />
               </InfoCard>
-              <InfoCard label="ADA Compliant">
+              <InfoCard label="ADA Compliant" helpKey="adaAccessible">
                 <YesNoTag yes={school.adaAccessible} />
               </InfoCard>
-              <InfoCard label="Learning Spaces AC">
+              <InfoCard label="Learning Spaces AC" helpKey="acCoverage">
                 {formatPct(school.acCoverage)}
               </InfoCard>
-              <InfoCard label="Building Square Footage">
+              <InfoCard
+                label="Building Square Footage"
+                helpKey="buildingSquareFootage"
+              >
                 {formatSqFt(school.buildingSquareFootage)}
               </InfoCard>
             </div>
           </div>
           <div>
-            <SectionTitle>Academic & Programs</SectionTitle>
+            <SectionTitle helpKey="academicPrograms">
+              Academic & Programs
+            </SectionTitle>
             <div className="space-y-2">
               <div className="rounded-md bg-sky-50 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-sky-800">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-800">
                     WI DPI Report Card
+                    <MetricHelpTip helpKey="academicPerformance" />
                   </span>
                   <span className="text-sm font-bold text-sky-950">
                     {formatNum(school.academicPerformance, 1)}/100
@@ -539,30 +695,53 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
                 </div>
                 <ProgressBar pct={school.academicPerformance} />
               </div>
-              <InfoCard label="# of Specialty Programs/Pathways">
+              <InfoCard
+                label="# of Specialty Programs/Pathways"
+                helpKey="programmaticOfferings"
+                caption={
+                  school.specialtyProgramNames.length > 0
+                    ? school.specialtyProgramNames.join(', ')
+                    : undefined
+                }
+              >
                 {formatNum(school.programmaticOfferings, 1)}
               </InfoCard>
-              <InfoCard label="Special Ed Programs">
+              <InfoCard
+                label="Special Ed Programs"
+                helpKey="specialEdProgramCount"
+                caption={
+                  school.specialEdProgramNames.length > 0
+                    ? school.specialEdProgramNames.join(', ')
+                    : undefined
+                }
+              >
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-sky-200 px-1.5 text-xs font-bold text-sky-950">
                   {formatNum(school.specialEdProgramCount)}
                 </span>
               </InfoCard>
-              <InfoCard label="ELL Students">{formatPct(ellPct)}</InfoCard>
+              <InfoCard label="ELL Students" helpKey="ellStudents">
+                {formatPct(ellPct)}
+              </InfoCard>
             </div>
           </div>
           <div>
-            <SectionTitle>Students & Capacity</SectionTitle>
+            <SectionTitle helpKey="enrollmentCapacity">
+              Students & Capacity
+            </SectionTitle>
             <div className="space-y-2">
-              <InfoCard label="SY24-25 Enrollment">
+              <InfoCard label="SY24-25 Enrollment" helpKey="currentEnrollment">
                 {formatNum(school.currentEnrollment)}
               </InfoCard>
-              <InfoCard label="Building Capacity">
+              <InfoCard label="Building Capacity" helpKey="buildingCapacity">
                 {formatNum(school.buildingCapacity)}
               </InfoCard>
-              <InfoCard label="Available Capacity">
+              <InfoCard label="Available Capacity" helpKey="availableCapacity">
                 {seats == null ? '—' : formatNum(seats)}
               </InfoCard>
-              <InfoCard label="10-yr Projected Utilization">
+              <InfoCard
+                label="10-yr Projected Utilization"
+                helpKey="projectedUtilization10yr"
+              >
                 {formatPct(school.projectedUtilization10yr)}
               </InfoCard>
             </div>

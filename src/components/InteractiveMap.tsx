@@ -21,6 +21,7 @@ import type {
   StrategyGroupId,
 } from '../types/school'
 import { SchoolProfilePanel } from './SchoolProfilePanel'
+import { MetricHelpTip } from './MetricHelpTip'
 
 export type MapViewMode = 'compare' | 'understand'
 
@@ -59,6 +60,7 @@ function detailFields(thresholds: DecisionThresholds): {
     },
     { key: 'buildingScore', label: 'Building Score' },
     { key: 'programmaticOfferings', label: 'Programmatic Offerings' },
+    { key: 'specialtyProgramNames', label: 'Specialty Programs Offered' },
     {
       key: 'nearbyCapacityAvailable',
       label: `Nearby Capacity Available (within ${formatMilesPhrase(thresholds.nearbyCapacityMiles)})`,
@@ -91,12 +93,16 @@ function detailFields(thresholds: DecisionThresholds): {
     },
     { key: 'nonMpsSchoolsWithin1Mile', label: 'Non-MPS Schools Within 1 Mile' },
     { key: 'specialEdProgramCount', label: 'Special Ed Program Count' },
+    { key: 'specialEdProgramNames', label: 'Special Ed Programs Offered' },
     { key: 'overutilizedMpsWithin1Mile', label: 'Overutilized MPS Within 1 Mile' },
   ]
 }
 
 function formatValue(value: unknown, percent = false): string {
   if (value === undefined || value === null || value === '') return '—'
+  if (Array.isArray(value)) {
+    return value.length === 0 ? '—' : value.map(String).join(', ')
+  }
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (typeof value === 'number') {
     const n = Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -106,6 +112,7 @@ function formatValue(value: unknown, percent = false): string {
 }
 
 function isEmptyValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length === 0
   return value === undefined || value === null || value === ''
 }
 
@@ -246,13 +253,33 @@ export function InteractiveMap({
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return []
+
+    const rankMatch = (school: (typeof schools)[number]): number | null => {
+      const name = school.schoolName.toLowerCase()
+      const id = school.schoolId.toLowerCase()
+      if (name === q) return 0
+      if (name.startsWith(q)) return 1
+      const words = name.split(/[^a-z0-9]+/).filter(Boolean)
+      if (words.some((w) => w.startsWith(q))) return 2
+      const nameIdx = name.indexOf(q)
+      if (nameIdx >= 0) return 3 + nameIdx / 1000
+      if (id === q || id.startsWith(q)) return 10
+      if (id.includes(q)) return 11
+      return null
+    }
+
     return schools
+      .map((school) => ({ school, rank: rankMatch(school) }))
       .filter(
-        (s) =>
-          s.schoolName.toLowerCase().includes(q) ||
-          s.schoolId.toLowerCase().includes(q),
+        (row): row is { school: (typeof schools)[number]; rank: number } =>
+          row.rank !== null,
       )
+      .sort((a, b) => {
+        if (a.rank !== b.rank) return a.rank - b.rank
+        return a.school.schoolName.localeCompare(b.school.schoolName)
+      })
       .slice(0, 12)
+      .map((row) => row.school)
   }, [schools, searchQuery])
 
   useEffect(() => {
@@ -832,6 +859,7 @@ export function InteractiveMap({
                           <td className="px-3 py-1.5 font-medium whitespace-nowrap text-mps-text">
                             <span className="inline-flex flex-wrap items-center gap-1.5">
                               {label}
+                              <MetricHelpTip helpKey={key} side="right" />
                               {quality === 'missing' && (
                                 <span
                                   className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold tracking-wide text-amber-900 uppercase"
@@ -855,6 +883,11 @@ export function InteractiveMap({
                               key={school.schoolId}
                               className={`px-3 py-1.5 ${
                                 flagged ? 'text-mps-muted' : 'text-mps-text'
+                              } ${
+                                key === 'specialtyProgramNames' ||
+                                key === 'specialEdProgramNames'
+                                  ? 'max-w-[14rem] whitespace-normal'
+                                  : ''
                               }`}
                             >
                               {formatValue(school[key], percent)}
