@@ -80,6 +80,51 @@ export function parseNumber(value: string | number | boolean | null): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/**
+ * Insert spaces into CamelCase / PascalCase DPI rating strings
+ * (e.g. SatisfactoryProgress → Satisfactory Progress).
+ */
+export function formatReportCardLabel(raw: string): string {
+  return String(raw)
+    .trim()
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Report Card Score: numeric 0–100, or an alternative text rating
+ * (NeedsImprovement, NoData, SatisfactoryProgress, …).
+ */
+export function parseReportCardScore(
+  value: string | number | boolean | null,
+): { score: number; label?: string; hasNumericScore: boolean } {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return { score: value, hasNumericScore: true }
+  }
+  const raw = String(value ?? '').trim()
+  if (!raw) return { score: 0, hasNumericScore: false }
+  const numericProbe = raw.replace(/,/g, '').replace(/%/g, '').trim()
+  if (/^-?\d+(\.\d+)?$/.test(numericProbe)) {
+    const n = Number(numericProbe)
+    return {
+      score: Number.isFinite(n) ? n : 0,
+      hasNumericScore: Number.isFinite(n),
+    }
+  }
+  // Any non-numeric token (CamelCase or spaced) is an alternate rating label.
+  if (/[a-zA-Z]/.test(raw)) {
+    return {
+      score: 0,
+      label: formatReportCardLabel(raw),
+      hasNumericScore: false,
+    }
+  }
+  return { score: 0, hasNumericScore: false }
+}
+
 export function parseYes(value: string | number | boolean | null): boolean {
   if (typeof value === 'boolean') return value
   const s = String(value ?? '')

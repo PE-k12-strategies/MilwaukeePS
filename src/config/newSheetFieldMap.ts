@@ -101,7 +101,10 @@ export const NEW_SHEET_FIELDS: Record<string, NewSheetFieldSpec> = {
     tab: 'siteInfo',
     col: 'M',
   },
-  /** Gate: only Y rows are loaded (replaces Old sheet Evaluate = Yes). */
+  /**
+   * Gate: only Y rows are loaded. Resolved from the new sheet only — never
+   * falls back to legacy 1.1 Evaluate.
+   */
   includeInEvaluation: {
     key: 'includeInEvaluation',
     label: 'Include in Evaluation',

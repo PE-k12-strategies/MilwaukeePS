@@ -216,7 +216,19 @@ function RadarChart({
           const lines = labelLines(ax.label)
           const lineH = 11
           const startY = y - ((lines.length - 1) * lineH) / 2
-          const detail = `${ax.percentile.toFixed(0)}th percentile`
+          const n = Math.round(ax.percentile)
+          const mod100 = n % 100
+          const ordinal =
+            mod100 >= 11 && mod100 <= 13
+              ? 'th'
+              : n % 10 === 1
+                ? 'st'
+                : n % 10 === 2
+                  ? 'nd'
+                  : n % 10 === 3
+                    ? 'rd'
+                    : 'th'
+          const detail = `${n}${ordinal} percentile`
           return (
             <g key={ax.label}>
               <circle
@@ -690,10 +702,22 @@ export function SchoolProfilePanel({ school, schools }: SchoolProfilePanelProps)
                     <MetricHelpTip helpKey="academicPerformance" />
                   </span>
                   <span className="text-sm font-bold text-sky-950">
-                    {formatNum(school.academicPerformance, 1)}/100
+                    {school.academicPerformanceLabel
+                      ? school.academicPerformanceLabel
+                      : school.academicHasNumericScore === false
+                        ? 'No Data'
+                        : `${formatNum(school.academicPerformance, 1)}/100`}
                   </span>
                 </div>
-                <ProgressBar pct={school.academicPerformance} />
+                {school.academicPerformanceLabel ||
+                school.academicHasNumericScore === false ? (
+                  <p className="mt-1.5 text-[11px] leading-snug text-sky-800/90">
+                    A numerical score was not provided for this school because an
+                    alternative rating system was applied.
+                  </p>
+                ) : (
+                  <ProgressBar pct={school.academicPerformance} />
+                )}
               </div>
               <InfoCard
                 label="# of Specialty Programs/Pathways"

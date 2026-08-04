@@ -27,6 +27,7 @@ import {
   parseGrowthCapacity,
   parseNumber,
   parsePercent,
+  parseReportCardScore,
   parseYes,
   siteKeyFromSchoolId,
 } from './loadSchoolsFromSheets'
@@ -134,7 +135,12 @@ function readCellAt(
   const cell = row.c?.[colIndex]
   const v = cell?.v ?? null
   const f = cell?.f ?? null
-  const effective = v ?? f
+  // Prefer a non-blank v; otherwise use formatted f (text in numeric columns).
+  const vBlank =
+    v === null ||
+    v === undefined ||
+    (typeof v === 'string' && !String(v).trim())
+  const effective = vBlank ? f : v
   return { v, f, missing: isBlankOrErrorCell(effective) }
 }
 
@@ -172,10 +178,10 @@ function toFeature(props: SchoolProperties): SchoolFeature {
  * Load schools from the new workbook using the in-app field map
  * (`config/newSheetFieldMap.ts`). Columns are resolved by matching header
  * **labels** on each tab (not fixed Excel letters). Only rows with School and
- * Site Info “Include in Evaluation” = Y are loaded. Unmapped, blank/#REF!, or
- * missing-header fields fall back to the old workbook while dual-source mode
- * remains enabled. Distance-based proximity fields are recomputed from
- * SchoolToSchoolDistances when available.
+ * Site Info “Include in Evaluation” = Y are loaded (new sheet only — never
+ * legacy 1.1 Evaluate). Unmapped, blank/#REF!, or missing-header fields fall
+ * back to the old workbook for other attributes. Distance-based proximity
+ * fields are recomputed from SchoolToSchoolDistances when available.
  */
 export async function loadNewWorkbookSchools(
   thresholds: DecisionThresholds = DEFAULT_THRESHOLDS,
@@ -324,9 +330,11 @@ export async function loadNewWorkbookSchools(
   const uniqueIdBySchoolId = new Map<string, string>()
 
   for (const [site, siteRow] of siteBySite) {
-    // Include in Evaluation = Y only — replaces Old Evaluate = Yes.
-    const includeCell = getField(site, NEW_SHEET_FIELDS.includeInEvaluation)
-    if (!parseYes(includeCell.v ?? includeCell.f)) continue
+    // Include in Evaluation = Y (new sheet only — never legacy Evaluate).
+    const includeSpec = NEW_SHEET_FIELDS.includeInEvaluation
+    const includeCol = resolvedCols.get(includeSpec.key)?.index ?? -1
+    const includeCell = readCellAt(siteRow, includeCol)
+    if (includeCol < 0 || !parseYes(includeCell.v ?? includeCell.f)) continue
 
     const schoolId = formatSchoolId(site)
     if (!schoolId) continue
@@ -395,9 +403,63 @@ export async function loadNewWorkbookSchools(
       : (old?.nonMpsSchoolsWithin1Mile ?? false)
 
     const academicCell = getField(site, NEW_SHEET_FIELDS.academicPerformance)
-    const academicPerformance = !academicCell.missing
-      ? parseNumber(academicCell.v)
-      : (old?.academicPerformance ?? 0)
+    const academicCol = resolvedCols.get(NEW_SHEET_FIELDS.academicPerformance.key)
+    let academicPerformance = 0
+    let academicPerformanceLabel: string | undefined
+    let academicHasNumericScore = false
+    // Prefer formatted text (f) when present — gviz often puts ratings like
+    // NeedsImprovement in f while v is blank/0 for mixed-type columns.
+    const academicRaw = (() => {
+      const formatted =
+        academicCell.f != null ? String(academicCell.f).trim() : ''
+      if (formatted && !/^-?\d+(\.\d+)?%?$/.test(formatted.replace(/,/g, ''))) {
+        return formatted
+      }
+      if (
+        typeof academicCell.v === 'string' &&
+        academicCell.v.trim() &&
+        !/^-?\d+(\.\d+)?%?$/.test(academicCell.v.trim().replace(/,/g, ''))
+      ) {
+        return academicCell.v.trim()
+      }
+      if (
+        typeof academicCell.v === 'number' &&
+        Number.isFinite(academicCell.v)
+      ) {
+        if (
+          academicCell.v === 0 &&
+          formatted &&
+          !/^-?\d+(\.\d+)?%?$/.test(formatted.replace(/,/g, ''))
+        ) {
+          return formatted
+        }
+        // Skip date-serial / meta rows mistaken as scores (e.g. 46224).
+        if (academicCell.v > 1000) return null
+        return academicCell.v
+      }
+      if (formatted) return formatted
+      if (academicCell.v != null && String(academicCell.v).trim()) {
+        return academicCell.v
+      }
+      return null
+    })()
+    if (academicCol && academicCol.index >= 0) {
+      // Column exists on the new sheet — never invent 0.0/100 from legacy.
+      if (academicRaw != null && academicRaw !== '') {
+        const parsed = parseReportCardScore(academicRaw)
+        academicPerformance = parsed.score
+        academicPerformanceLabel = parsed.label
+        academicHasNumericScore = parsed.hasNumericScore
+      } else {
+        academicHasNumericScore = false
+      }
+    } else if (old?.academicHasNumericScore) {
+      academicPerformance = old.academicPerformance ?? 0
+      academicHasNumericScore = true
+    } else if (old?.academicPerformanceLabel) {
+      academicPerformanceLabel = old.academicPerformanceLabel
+      academicHasNumericScore = false
+    }
 
     const specialEdCell = getField(site, NEW_SHEET_FIELDS.specialEdProgramCount)
     const specialEdProgramCount = !specialEdCell.missing
@@ -558,6 +620,8 @@ export async function loadNewWorkbookSchools(
       raceEthnicityCounts,
       boardDistrict,
       academicPerformance,
+      academicPerformanceLabel,
+      academicHasNumericScore,
       pre1978LeadRisk,
       adaAccessible,
       acCoverage,
@@ -645,6 +709,7 @@ export async function loadNewWorkbookSchools(
   }
 
   for (const [key, stats] of mappedFieldStats) {
+    if (key === 'includeInEvaluation') continue
     if (headerMismatchKeys.has(key)) continue
     if (stats.ok === 0 && stats.missing > 0) {
       noteFallback(fallbackFields, seenFallback, {

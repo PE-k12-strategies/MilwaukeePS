@@ -59,8 +59,10 @@ export function DataPanel({
           <p className="mt-2 text-[11px] leading-relaxed text-mps-muted">
             Attribute data is read live from the Google Sheet by matching column
             header names (column order can change). School map locations come from
-            the built-in MPSSchools GeoJSON (matched by DPI / schoolId). Missing
-            mapped fields may fall back to the legacy LRFMP workbook.
+            the built-in MPSSchools GeoJSON (matched by DPI / schoolId). Only schools
+            with Include in Evaluation = Y on the new sheet are loaded (never from
+            legacy Evaluate). Other missing mapped fields may fall back to the
+            legacy LRFMP workbook — see the amber list below when that happens.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-mps-muted">
             Source workbook:{' '}
@@ -103,8 +105,8 @@ export function DataPanel({
                 A mapped field’s header is missing or ambiguous on the sheet. Update
                 the label in{' '}
                 <code className="rounded bg-red-100 px-0.5">newSheetFieldMap.ts</code>{' '}
-                to match the sheet, or restore the header name — values may fall back
-                to the legacy workbook.
+                to match the sheet, or restore the header name. Other attributes may
+                fall back to the legacy workbook; Include in Evaluation never does.
               </p>
               <ul className="mt-1.5 max-h-40 list-disc space-y-0.5 overflow-y-auto pl-4 text-[11px] text-red-950">
                 {headerIssues.map((f) => (

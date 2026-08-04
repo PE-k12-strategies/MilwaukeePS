@@ -890,7 +890,16 @@ export function InteractiveMap({
                                   : ''
                               }`}
                             >
-                              {formatValue(school[key], percent)}
+                              {formatValue(
+                                key === 'academicPerformance'
+                                  ? school.academicPerformanceLabel
+                                    ? school.academicPerformanceLabel
+                                    : school.academicHasNumericScore === false
+                                      ? 'No Data'
+                                      : school.academicPerformance
+                                  : school[key],
+                                percent,
+                              )}
                             </td>
                           ))}
                         </tr>

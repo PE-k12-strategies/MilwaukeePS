@@ -54,8 +54,18 @@ export interface SchoolProperties {
   raceEthnicityCounts: Record<string, number>
   /** Board district label, e.g. "District 1" (3.2 col K) */
   boardDistrict: string
-  /** Academic performance score (higher = better) */
+  /** Academic performance score 0–100 (higher = better); 0 when non-numeric/blank */
   academicPerformance: number
+  /**
+   * Non-numeric DPI report-card rating (e.g. “Satisfactory Progress”) when the
+   * sheet provides an alternative rating instead of a 0–100 score.
+   */
+  academicPerformanceLabel?: string
+  /**
+   * True when Report Card Score is a real numeric value from the sheet.
+   * False for blank cells or text ratings (do not show “0.0/100”).
+   */
+  academicHasNumericScore?: boolean
   /** Building constructed before 1978 (lead risk) */
   pre1978LeadRisk: boolean
   /** Academic spaces are ADA accessible */
