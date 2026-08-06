@@ -49,9 +49,10 @@ export interface NewSheetFieldSpec {
 export const NEW_SHEET_FIELDS: Record<string, NewSheetFieldSpec> = {
   schoolName: {
     key: 'schoolName',
-    label: 'Official School Name',
+    label: 'Preferred Tool-Facing School Name',
+    aliases: ['Official School Name', 'School Name'],
     tab: 'siteInfo',
-    col: 'D',
+    col: 'E',
   },
   gradeBand: {
     key: 'gradeBand',

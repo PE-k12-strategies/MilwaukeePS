@@ -215,7 +215,11 @@ export async function loadNewWorkbookSchools(
     resolveNewSheetColumns(tables)
 
   const nameColForTab = (tab: NewSheetTabKey): number => {
-    const labels = [NEW_SHEET_FIELDS.schoolName.label, 'School Name']
+    // Site Info uses preferred (E); other tabs typically have Official (D).
+    const labels = [
+      NEW_SHEET_FIELDS.schoolName.label,
+      ...(NEW_SHEET_FIELDS.schoolName.aliases ?? []),
+    ]
     for (const label of labels) {
       const { index } = findColumnIndex(headersByTab[tab], label)
       if (index >= 0) return index
