@@ -58,11 +58,9 @@ export function DataPanel({
 
           <p className="mt-2 text-[11px] leading-relaxed text-mps-muted">
             Attribute data is read live from the Google Sheet by matching column
-            header names (column order can change). School map locations come from
-            the built-in MPSSchools GeoJSON (matched by DPI / schoolId). Only schools
-            with Include in Evaluation = Y on the new sheet are loaded (never from
-            legacy Evaluate). Other missing mapped fields may fall back to the
-            legacy LRFMP workbook — see the amber list below when that happens.
+            header names (column order can change). Other missing mapped fields may
+            fall back to the legacy LRFMP workbook — see the amber list below when
+            that happens.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-mps-muted">
             Source workbook:{' '}
